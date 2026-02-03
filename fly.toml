@@ -1,0 +1,22 @@
+app = "vechernicy-bot"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  BOT_TOKEN = ""
+  ADMIN_ID = ""
+
+# Убираем http_service, если бот не использует вебхуки
+# или оставляем минимальную конфигурацию
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+  auto_stop_machines = true
+  auto_start_machines = true
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 128  # меньше памяти для простого бота
