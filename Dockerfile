@@ -8,14 +8,15 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Копирование зависимостей
+# Копирование зависимостей И исходного кода
 COPY requirements.txt .
+COPY data.json .
 
 # Установка Python зависимостей
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Копирование исходного кода
+# Копирование остального исходного кода
 COPY . .
 
 # Создание пользователя для безопасности
