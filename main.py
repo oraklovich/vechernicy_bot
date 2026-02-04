@@ -134,6 +134,17 @@ def get_admin_text():
     )
     return text
 
+def get_bus_schedule_text():
+    """Возвращает текст расписания автобуса"""
+    text = (
+        "<b>🚌 РАСПИСАНИЕ АВТОБУСА</b>\n\n"
+        "<b>Емельяново - Вечерницы</b>\n\n"
+        "📅 Актуальное расписание можно посмотреть на сайте:\n"
+        "🔗 https://krasavtovokzal.ru/raspisanie/kya/emelyanovo/kya/vechernicy\n\n"
+        "<i>💡 Перейдите по ссылке для просмотра актуального расписания и тарифов</i>"
+    )
+    return text
+
 def get_rules_text():
     """Возвращает текст правил"""
     if not data.get("rules"):
@@ -171,6 +182,11 @@ def get_all_contacts_text():
     text += "\n• <b>Экель Виктор Юрьевич</b>\n"
     text += "  +7 (39133) 28-0-19\n"
     
+    # Расписание автобуса
+    text += "\n<b>🚌 Расписание автобуса:</b>\n"
+    text += "\n• <b>Емельяново - Вечерницы</b>\n"
+    text += "  https://krasavtovokzal.ru/raspisanie/kya/emelyanovo/kya/vechernicy\n"
+    
     text += "\n<i>💡 Для быстрого доступа используйте соответствующие разделы меню</i>"
     return text
 
@@ -182,6 +198,7 @@ def get_help_text():
         "• <b>⚡ Электросети</b> — электроснабжение (3 организации)\n"
         "• <b>🗑️ Коммуналка</b> — вывоз мусора и коммунальные услуги\n"
         "• <b>🏛️ Администрация</b> — глава муниципального образования\n"
+        "• <b>🚌 Расписание автобуса</b> — маршрут Емельяново - Вечерницы\n"
         "• <b>📌 Правила</b> — правила сообщества\n"
         "• <b>📞 Все контакты</b> — полный список телефонов\n\n"
         "<i>Для срочных вызовов используйте короткие номера:</i>\n"
@@ -206,11 +223,14 @@ def get_main_menu_keyboard():
                 InlineKeyboardButton(text="🏛️ Администрация", callback_data="menu_admin")
             ],
             [
-                InlineKeyboardButton(text="📌 Правила", callback_data="menu_rules"),
-                InlineKeyboardButton(text="📞 Все контакты", callback_data="menu_contacts")
+                InlineKeyboardButton(text="🚌 Расписание автобуса", callback_data="menu_bus"),
+                InlineKeyboardButton(text="📌 Правила", callback_data="menu_rules")
             ],
             [
-                InlineKeyboardButton(text="❓ Помощь", callback_data="menu_help"),
+                InlineKeyboardButton(text="📞 Все контакты", callback_data="menu_contacts"),
+                InlineKeyboardButton(text="❓ Помощь", callback_data="menu_help")
+            ],
+            [
                 InlineKeyboardButton(text="↩️ Свернуть меню", callback_data="menu_close")
             ]
         ]
@@ -316,6 +336,7 @@ async def handle_menu_buttons(callback: CallbackQuery):
         "contacts": get_all_contacts_text,
         "rules": get_rules_text,
         "admin": get_admin_text,
+        "bus": get_bus_schedule_text,
         "help": get_help_text,
     }
     
