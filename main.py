@@ -91,16 +91,16 @@ def get_electricity_text():
     return text
 
 def get_utilities_text():
-    """Возвращает текст по коммуналке"""
+    """Возвращает текст по вывозу ТКО"""
     if not data.get("utilities"):
         return "⚠️ Информация временно недоступна"
     
-    text = "<b>🗑️ КОММУНАЛЬНЫЕ УСЛУГИ</b>\n\n"
+    text = "<b>🗑️ ВЫВОЗ ТКО (ТВЕРДЫХ КОММУНАЛЬНЫХ ОТХОДОВ)</b>\n\n"
     
     # Вывоз мусора
     garbage = data.get("utilities", {}).get("garbage", {})
     if garbage:
-        text += f"<b>Вывоз мусора (ТКО):</b>\n"
+        text += f"<b>Компания по вывозу ТКО:</b>\n"
         text += f"🏢 <b>{garbage['company']}</b>\n"
         text += f"📝 {garbage['service']}\n"
         text += f"📞 {garbage['phone']}\n"
@@ -116,6 +116,11 @@ def get_utilities_text():
     
     if water_info.get("note"):
         text += f"\n<i>{water_info['note']}</i>"
+    
+    # График вывоза ТКО
+    text += "\n\n<b>📅 График вывоза ТКО:</b>\n"
+    text += "🔗 https://lb.rosttech.online/for-clients/tech-zones/8/Levoberezhnaya\n\n"
+    text += "<i>💡 Перейдите по ссылке для просмотра актуального графика вывоза отходов</i>"
     
     return text
 
@@ -145,6 +150,21 @@ def get_bus_schedule_text():
     )
     return text
 
+def get_clinic_text():
+    """Возвращает текст амбулатории"""
+    text = (
+        "<b>🏥 НИКОЛЬСКАЯ ВРАЧЕБНАЯ АМБУЛАТОРИЯ</b>\n\n"
+        "<b>Контакты отделения:</b>\n\n"
+        "<b>Адрес отделения:</b>\n"
+        "Емельяновский район, с. Никольское, ул. Советская, 75 «А»\n\n"
+        "<b>Телефон отделения:</b>\n"
+        "8 (391) 205‒25‒03 доб. 210\n\n"
+        "<b>Сайт:</b>\n"
+        "🔗 https://emelrb.gosuslugi.ru/informatsiya-dlya-patsientov/otdeleniya/nikolskaya-vrachebnaya-ambulatoriya.html\n\n"
+        "<i>💡 Перейдите по ссылке для получения дополнительной информации о работе амбулатории</i>"
+    )
+    return text
+
 def get_rules_text():
     """Возвращает текст правил"""
     if not data.get("rules"):
@@ -170,17 +190,27 @@ def get_all_contacts_text():
         text += f"\n• <b>{company['company']}</b>\n"
         text += f"  {company['phone']}\n"
     
-    # Коммуналка
-    text += "\n<b>🗑️ Коммунальные услуги:</b>\n"
+    # Вывоз ТКО
+    text += "\n<b>🗑️ Вывоз ТКО:</b>\n"
     garbage = data.get("utilities", {}).get("garbage", {})
     if garbage:
         text += f"\n• <b>{garbage['company']}</b>\n"
         text += f"  {garbage['phone']} - {garbage['service']}\n"
     
+    # График вывоза ТКО
+    text += "\n• <b>График вывоза ТКО:</b>\n"
+    text += "  https://lb.rosttech.online/for-clients/tech-zones/8/Levoberezhnaya\n"
+    
     # Глава муниципального образования
     text += "\n<b>🏛️ Глава муниципального образования:</b>\n"
     text += "\n• <b>Экель Виктор Юрьевич</b>\n"
     text += "  +7 (39133) 28-0-19\n"
+    
+    # Амбулатория
+    text += "\n<b>🏥 Никольская врачебная амбулатория:</b>\n"
+    text += "\n• <b>Адрес:</b> с. Никольское, ул. Советская, 75 «А»\n"
+    text += "• <b>Телефон:</b> 8 (391) 205‒25‒03 доб. 210\n"
+    text += "• <b>Сайт:</b> https://emelrb.gosuslugi.ru/informatsiya-dlya-patsientov/otdeleniya/nikolskaya-vrachebnaya-ambulatoriya.html\n"
     
     # Расписание автобуса
     text += "\n<b>🚌 Расписание автобуса:</b>\n"
@@ -196,8 +226,9 @@ def get_help_text():
         "<b>ℹ️ Помощь по боту:</b>\n\n"
         "• <b>🆘 Экстренно</b> — все экстренные службы с номерами\n"
         "• <b>⚡ Электросети</b> — электроснабжение (3 организации)\n"
-        "• <b>🗑️ Коммуналка</b> — вывоз мусора и коммунальные услуги\n"
+        "• <b>🗑️ Вывоз ТКО</b> — твердые коммунальные отходы\n"
         "• <b>🏛️ Администрация</b> — глава муниципального образования\n"
+        "• <b>🏥 Амбулатория</b> — Никольская врачебная амбулатория\n"
         "• <b>🚌 Расписание автобуса</b> — маршрут Емельяново - Вечерницы\n"
         "• <b>📌 Правила</b> — правила сообщества\n"
         "• <b>📞 Все контакты</b> — полный список телефонов\n\n"
@@ -219,18 +250,19 @@ def get_main_menu_keyboard():
                 InlineKeyboardButton(text="⚡ Электричество", callback_data="menu_electricity")
             ],
             [
-                InlineKeyboardButton(text="🗑️ Коммуналка", callback_data="menu_garbage"),
+                InlineKeyboardButton(text="🗑️ Вывоз ТКО", callback_data="menu_garbage"),
                 InlineKeyboardButton(text="🏛️ Администрация", callback_data="menu_admin")
             ],
             [
-                InlineKeyboardButton(text="🚌 Расписание автобуса", callback_data="menu_bus"),
-                InlineKeyboardButton(text="📌 Правила", callback_data="menu_rules")
+                InlineKeyboardButton(text="🏥 Амбулатория", callback_data="menu_clinic"),
+                InlineKeyboardButton(text="🚌 Расписание автобуса", callback_data="menu_bus")
             ],
             [
-                InlineKeyboardButton(text="📞 Все контакты", callback_data="menu_contacts"),
-                InlineKeyboardButton(text="❓ Помощь", callback_data="menu_help")
+                InlineKeyboardButton(text="📌 Правила", callback_data="menu_rules"),
+                InlineKeyboardButton(text="📞 Все контакты", callback_data="menu_contacts")
             ],
             [
+                InlineKeyboardButton(text="❓ Помощь", callback_data="menu_help"),
                 InlineKeyboardButton(text="↩️ Свернуть меню", callback_data="menu_close")
             ]
         ]
@@ -337,6 +369,7 @@ async def handle_menu_buttons(callback: CallbackQuery):
         "rules": get_rules_text,
         "admin": get_admin_text,
         "bus": get_bus_schedule_text,
+        "clinic": get_clinic_text,
         "help": get_help_text,
     }
     
