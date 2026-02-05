@@ -8,3 +8,5 @@ alembic==1.12.1
 psycopg2-binary==2.9.9
 requests==2.31.0
 schedule==1.2.0
+psutil==5.9.8
+aiofiles==23.2.1

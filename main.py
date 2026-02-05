@@ -2,6 +2,9 @@ import json
 import os
 import asyncio
 import logging
+import sys
+import signal
+from datetime import datetime
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart, Command
@@ -21,6 +24,125 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# ========== RESTART HANDLER (встроенный) ==========
+class RestartHandler:
+    def __init__(self, bot: Bot, config_file="bot_state.json"):
+        self.bot = bot
+        self.config_file = config_file
+        self.shutting_down = False
+        
+    async def save_bot_state(self):
+        """Сохраняет состояние бота перед остановкой"""
+        try:
+            state = {
+                "last_update": datetime.now().isoformat(),
+                "restart_count": self.load_state().get("restart_count", 0) + 1,
+                "shutdown_reason": "graceful" if not self.shutting_down else "interrupted"
+            }
+            
+            with open(self.config_file, "w") as f:
+                json.dump(state, f, indent=2)
+                
+            logger.info(f"Состояние бота сохранено: {state}")
+        except Exception as e:
+            logger.error(f"Ошибка сохранения состояния: {e}")
+    
+    def load_state(self):
+        """Загружает состояние бота"""
+        try:
+            with open(self.config_file, "r") as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {"restart_count": 0, "last_update": None}
+    
+    async def graceful_shutdown(self, signal_received=None):
+        """Корректная остановка бота"""
+        if self.shutting_down:
+            return
+            
+        self.shutting_down = True
+        logger.info(f"Получен сигнал {signal_received}. Начинаю graceful shutdown...")
+        
+        try:
+            # 1. Уведомляем админа (если есть)
+            admin_id = os.getenv("ADMIN_ID")
+            if admin_id:
+                try:
+                    await self.bot.send_message(
+                        admin_id,
+                        f"🔴 Бот останавливается...\n"
+                        f"Причина: {signal_received or 'manual shutdown'}\n"
+                        f"Время: {datetime.now().strftime('%H:%M:%S')}"
+                    )
+                except:
+                    pass
+            
+            # 2. Сохраняем состояние
+            await self.save_bot_state()
+            
+            logger.info("Graceful shutdown завершен")
+            
+        except Exception as e:
+            logger.error(f"Ошибка при graceful shutdown: {e}")
+    
+    def setup_signal_handlers(self):
+        """Настройка обработчиков сигналов"""
+        # Для Unix систем
+        try:
+            loop = asyncio.get_running_loop()
+            
+            for sig in (signal.SIGTERM, signal.SIGINT):
+                loop.add_signal_handler(
+                    sig,
+                    lambda s=sig: asyncio.create_task(self.graceful_shutdown(s.name))
+                )
+                
+            logger.info("Обработчики сигналов установлены")
+        except (ImportError, NotImplementedError):
+            # Для Windows или других систем
+            logger.warning("Сигналы не поддерживаются в этой системе")
+    
+    async def check_health(self):
+        """Проверка здоровья бота"""
+        try:
+            await self.bot.get_me()
+            return True
+        except Exception as e:
+            logger.error(f"Проверка здоровья не пройдена: {e}")
+            return False
+
+# ========== ОБРАБОТЧИК НЕОБРАБОТАННЫХ ИСКЛЮЧЕНИЙ ==========
+def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
+    """Глобальный обработчик непойманных исключений"""
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+        
+    logger.critical("Необработанное исключение:", exc_info=(exc_type, exc_value, exc_traceback))
+    
+    # Попытка уведомить админа
+    try:
+        admin_id = os.getenv("ADMIN_ID")
+        if admin_id and "BOT_TOKEN" in os.environ:
+            import asyncio
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            bot_temp = Bot(token=os.getenv("BOT_TOKEN"))
+            loop.run_until_complete(
+                bot_temp.send_message(
+                    admin_id,
+                    f"💥 Критическая ошибка бота:\n{exc_type.__name__}: {exc_value}"
+                )
+            )
+            loop.run_until_complete(bot_temp.session.close())
+    except:
+        pass
+
+sys.excepthook = handle_unhandled_exception
+
+# ========== ОСНОВНОЙ КОД БОТА ==========
 
 # Токен из переменных окружения
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -435,22 +557,77 @@ async def unknown_message(message: types.Message):
                 reply_markup=get_welcome_keyboard()
             )
 
-# ========== ГЛАВНАЯ ФУНКЦИЯ ==========
+# ========== ГЛАВНАЯ ФУНКЦИЯ С АВТОРЕСТАРТОМ ==========
 async def main():
-    """Основная функция запуска бота"""
-    logger.info("Запуск бота с единым меню в группе...")
+    """Основная функция запуска бота с авторестартом"""
+    logger.info("Запуск бота с системой авторестарта...")
+    
+    # Инициализация RestartHandler
+    restart_handler = RestartHandler(bot)
+    state = restart_handler.load_state()
+    
+    logger.info(f"Состояние бота: перезапуск #{state.get('restart_count', 0)}")
+    
+    # Уведомление админа о старте
+    admin_id = os.getenv("ADMIN_ID")
+    if admin_id:
+        try:
+            await bot.send_message(
+                admin_id,
+                f"🟢 Бот запущен!\n"
+                f"Перезапуск #{state.get('restart_count', 0)}\n"
+                f"Последний запуск: {state.get('last_update', 'неизвестно')}"
+            )
+        except Exception as e:
+            logger.warning(f"Не удалось уведомить админа: {e}")
     
     try:
+        # Настройка обработчиков сигналов
+        restart_handler.setup_signal_handlers()
+        
         # Проверка подключения
         bot_info = await bot.get_me()
         logger.info(f"Бот запущен: @{bot_info.username}")
         
-        # Запуск поллинга
-        await dp.start_polling(bot)
+        # Запуск поллинга с обработкой ошибок
+        await dp.start_polling(
+            bot,
+            allowed_updates=dp.resolve_used_update_types(),
+            handle_signals=False  # Сами обрабатываем сигналы
+        )
+        
+    except asyncio.CancelledError:
+        logger.info("Поллинг отменен")
     except Exception as e:
-        logger.error(f"Ошибка запуска бота: {e}")
+        logger.error(f"Критическая ошибка в основном цикле: {e}")
+        
+        # Сохраняем состояние при ошибке
+        await restart_handler.save_bot_state()
+        
+        # Пробуем перезапуститься через 30 секунд
+        logger.info("Попытка перезапуска через 30 секунд...")
+        await asyncio.sleep(30)
+        
+        # Рекурсивный перезапуск (максимум 5 раз подряд)
+        restart_count = state.get("restart_count", 0)
+        if restart_count < 5:
+            await main()
+        else:
+            logger.error("Достигнут лимит перезапусков (5). Требуется ручное вмешательство.")
+            if admin_id:
+                try:
+                    await bot.send_message(
+                        admin_id,
+                        "🚨 Достигнут лимит перезапусков бота! Требуется ручное вмешательство."
+                    )
+                except:
+                    pass
     finally:
+        if not restart_handler.shutting_down:
+            await restart_handler.graceful_shutdown("program_exit")
         await bot.session.close()
 
 if __name__ == "__main__":
+    # Добавляем переменную окружения ADMIN_ID в .env файл для уведомлений
+    # ADMIN_ID=ваш_telegram_id
     asyncio.run(main())

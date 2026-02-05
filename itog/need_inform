@@ -38,3 +38,4 @@ IP ВМ: 62.84.117.146
 y0__xDsrLmTARjB3RMgi46gpRbhbE7sTFrxHOV5axeVFjLO_ML7PQ - яндекс токен
 
 crpg9i8leono52e68f35- id reestr
+ssh -i ~/.ssh/id_rsa_yc yc-user@93.77.189.183
